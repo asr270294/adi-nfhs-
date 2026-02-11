@@ -1,0 +1,98 @@
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+
+# -----------------------
+# Page settings
+# -----------------------
+st.set_page_config(page_title="NFHS Dashboard", layout="wide")
+
+st.title("📊 National Family Health Survey (NFHS) Dashboard")
+
+# -----------------------
+# Load Data
+# -----------------------
+@st.cache_data
+def load_data():
+    df = pd.read_excel("All India National Family Health Survey1.xlsx")
+    return df
+
+df = load_data()
+
+# -----------------------
+# Sidebar Filters
+# -----------------------
+st.sidebar.header("Filters")
+
+state = st.sidebar.selectbox(
+    "Select State/UT",
+    sorted(df["India/States/UTs"].unique())
+)
+
+survey = st.sidebar.selectbox(
+    "Select Survey Round",
+    sorted(df["Survey"].unique())
+)
+
+area = st.sidebar.selectbox(
+    "Select Area",
+    sorted(df["Area"].unique())
+)
+
+# indicator columns (exclude first 3)
+indicator_cols = df.columns[3:]
+
+indicator = st.sidebar.selectbox(
+    "Select Indicator",
+    indicator_cols
+)
+
+# -----------------------
+# Filter Data
+# -----------------------
+filtered = df[
+    (df["India/States/UTs"] == state) &
+    (df["Survey"] == survey) &
+    (df["Area"] == area)
+]
+
+value = filtered[indicator].values[0]
+
+# -----------------------
+# Layout
+# -----------------------
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric(label="Indicator Value (%)", value=round(value, 2))
+
+with col2:
+    st.write("### Indicator Selected")
+    st.write(indicator)
+
+# -----------------------
+# Compare across states
+# -----------------------
+st.subheader("📈 State Comparison")
+
+compare_df = df[
+    (df["Survey"] == survey) &
+    (df["Area"] == area)
+][["India/States/UTs", indicator]]
+
+fig = px.bar(
+    compare_df,
+    x="India/States/UTs",
+    y=indicator,
+    title=f"{indicator} across States",
+)
+
+fig.update_layout(xaxis_tickangle=-60)
+
+st.plotly_chart(fig, use_container_width=True)
+
+# -----------------------
+# Raw Data Table
+# -----------------------
+st.subheader("📋 Data Table")
+st.dataframe(compare_df.sort_values(indicator, ascending=False))
